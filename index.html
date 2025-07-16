@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Kelompok 1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .chat-container {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transition: all 0.3s ease;
+        }
+        .message-enter {
+            animation: enter 0.3s ease-out forwards;
+        }
+        @keyframes enter {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            background-color: #6b7280;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 0 2px;
+        }
+        .typing-indicator span:nth-child(1) {
+            animation: typing 1s infinite;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation: typing 1s infinite 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation: typing 1s infinite 0.4s;
+        }
+        @keyframes typing {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+            100% { transform: translateY(0); }
+        }
+        .persona-selector {
+            transition: all 0.3s ease;
+        }
+        .persona-selector:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .modal {
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto max-w-6xl p-4 h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 rounded-t-lg shadow-md">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                        <i class="fas fa-robot text-blue-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold">Chatbot Kelompok 1</h1>
+                        <p class="text-xs opacity-80">Powered by AI</p>
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="change-persona" class="p-2 rounded-full hover:bg-blue-700 transition" title="Ubah Persona">
+                        <i class="fas fa-user-tie"></i>
+                    </button>
+                    <button id="toggle-theme" class="p-2 rounded-full hover:bg-blue-700 transition" title="Toggle Mode Gelap">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Chat area -->
+        <div class="flex-1 bg-white overflow-y-auto p-4 space-y-4" id="chat-area">
+            <!-- Welcome message -->
+            <div class="message-enter flex justify-start">
+                <div class="flex items-start space-x-2 max-w-xs md:max-w-md lg:max-w-lg xl:max-w-xl">
+                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-robot text-blue-600"></i>
+                    </div>
+                    <div class="bg-gray-100 p-3 rounded-lg rounded-tl-none">
+                        <p class="text-gray-800">Halo! Saya Chatbot dari Kelompok 1. Saya bisa membantu menjawab pertanyaan Anda. Apa yang bisa saya bantu?</p>
+                        <p class="text-xs text-gray-500 mt-1">Hari ini, {tanggal}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input area -->
+        <div class="bg-white p-4 rounded-b-lg border-t border-gray-200">
+            <form id="chat-form" class="flex space-x-2">
+                <div class="flex-1 relative">
+                    <input 
+                        type="text" 
+                        id="user-input" 
+                        placeholder="Ketik pesan Anda..." 
+                        class="w-full p-3 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        autocomplete="off"
+                    >
+                    <button type="button" id="clear-input" class="absolute right-2 top-3 text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <button 
+                    type="submit" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg transition flex items-center justify-center w-12"
+                    id="send-button"
+                >
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+            <p class="text-xs text-gray-500 mt-2 text-center">Chatbot ini mungkin menghasilkan informasi yang tidak akurat</p>
+        </div>
+    </div>
+
+    <!-- Persona Modal -->
+    <div id="persona-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 modal opacity-0 invisible">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg font-semibold">Pilih Persona Chatbot</h3>
+                <button id="close-modal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="persona-selector bg-blue-50 p-4 rounded-lg cursor-pointer border border-blue-100" data-persona="default">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-robot text-blue-600"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-medium">Asisten Standar</h4>
+                            <p class="text-xs text-gray-600">Netral dan membantu</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="persona-selector bg-green-50 p-4 rounded-lg cursor-pointer border border-green-100" data-persona="formal">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user-tie text-green-600"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-medium">Profesional</h4>
+                            <p class="text-xs text-gray-600">Formal dan sopan</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="persona-selector bg-yellow-50 p-4 rounded-lg cursor-pointer border border-yellow-100" data-persona="friendly">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-smile text-yellow-600"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-medium">Teman KKA</h4>
+                            <p class="text-xs text-gray-600">Koding Kecerdasan Artifisial</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="persona-selector bg-purple-50 p-4 rounded-lg cursor-pointer border border-purple-100" data-persona="technical">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-code text-purple-600"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-medium">Ahli Teknik</h4>
+                            <p class="text-xs text-gray-600">Detail dan teknis</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="persona-selector bg-red-50 p-4 rounded-lg cursor-pointer border border-red-100" data-persona="strict">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-gavel text-red-600"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-medium">Ketat</h4>
+                            <p class="text-xs text-gray-600">Tegas dan langsung</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="persona-selector bg-pink-50 p-4 rounded-lg cursor-pointer border border-pink-100" data-persona="humorous">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-laugh-squint text-pink-600"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-medium">Humoris</h4>
+                            <p class="text-xs text-gray-600">Lucu dan menghibur</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-gray-200 flex justify-end">
+                <button id="confirm-persona" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                    Terapkan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatForm = document.getElementById('chat-form');
+            const userInput = document.getElementById('user-input');
+            const chatArea = document.getElementById('chat-area');
+            const clearInput = document.getElementById('clear-input');
+            const toggleTheme = document.getElementById('toggle-theme');
+            const sendButton = document.getElementById('send-button');
+            const changePersonaBtn = document.getElementById('change-persona');
+            const personaModal = document.getElementById('persona-modal');
+            const closeModalBtn = document.getElementById('close-modal');
+            const confirmPersonaBtn = document.getElementById('confirm-persona');
+            const personaSelectors = document.querySelectorAll('.persona-selector');
+            
+            let isDarkMode = false;
+            let isWaitingForResponse = false;
+            let selectedPersona = 'default';
+            let selectedPersonaName = 'Asisten Standar';
+            let conversationHistory = [];
+
+          // Persona configurations
+const personas = {
+    default: {
+        name: "Asisten Standar",
+        systemMessage: "Anda adalah asisten AI yang membantu. Jawablah dengan ramah dan informatif.",
+        avatar: "fas fa-robot",
+        avatarColor: "bg-blue-100 text-blue-600",
+        messageBg: "bg-gray-100 text-gray-800",
+        timeColor: "text-gray-500"
+    },
+    formal: {
+        name: "Profesional",
+        systemMessage: "Anda adalah asisten profesional yang sangat formal dan sopan. Gunakan bahasa resmi dan struktur kalimat yang tepat. Berikan jawaban yang lengkap dan terstruktur.",
+        avatar: "fas fa-user-tie",
+        avatarColor: "bg-green-100 text-green-600",
+        messageBg: "bg-green-50 text-gray-800",
+        timeColor: "text-green-600"
+    },
+    friendly: {
+        name: "Teman KKA Kelompok 1",
+        systemMessage: "Anda adalah seorang guru, fokus pada koding dan kecerdasan artifisial buat edukasi guru-guru SMA. Bahasa yang dipakai tetap akrab, nggak terlalu teknis, supaya mudah dipahami. Kalau perlu, pakai analogi sederhana dan humor ringan. Emoji boleh dipakai sesekali biar suasana nggak kaku.",
+        avatar: "fas fa-smile",
+        avatarColor: "bg-yellow-100 text-yellow-600",
+        messageBg: "bg-yellow-50 text-gray-800",
+        timeColor: "text-yellow-600"
+    },
+    technical: {
+        name: "Ahli Teknik",
+        systemMessage: "Anda adalah ahli teknis yang sangat detail. Berikan penjelasan mendalam dengan istilah teknis yang tepat. Sertakan poin-poin penting dan struktur yang jelas.",
+        avatar: "fas fa-code",
+        avatarColor: "bg-purple-100 text-purple-600",
+        messageBg: "bg-purple-50 text-gray-800",
+        timeColor: "text-purple-600"
+    },
+    strict: {
+        name: "Ketat",
+        systemMessage: "Anda adalah asisten yang tegas dan langsung to the point. Jawablah dengan singkat dan padat tanpa basa-basi. Fokus pada fakta dan data.",
+        avatar: "fas fa-gavel",
+        avatarColor: "bg-red-100 text-red-600",
+        messageBg: "bg-red-50 text-gray-800",
+        timeColor: "text-red-600"
+    },
+    humorous: {
+        name: "Humoris",
+        systemMessage: "Anda adalah asisten yang lucu dan menghibur. Sertakan humor dalam jawaban Anda ketika tepat, tetapi tetap informatif. Gunakan emoji dan gaya bahasa yang menyenangkan.",
+        avatar: "fas fa-laugh-squint",
+        avatarColor: "bg-pink-100 text-pink-600",
+        messageBg: "bg-pink-50 text-gray-800",
+        timeColor: "text-pink-600"
+    },
+    // Persona baru yang ditambahkan
+    teacher: {
+        name: "Guru",
+        systemMessage: "Anda adalah seorang guru yang sabar dan berpengetahuan luas. Jelaskan konsep dengan cara yang mudah dipahami, berikan contoh-contoh praktis, dan tanyakan apakah penjelasan Anda sudah jelas.",
+        avatar: "fas fa-chalkboard-teacher",
+        avatarColor: "bg-indigo-100 text-indigo-600",
+        messageBg: "bg-indigo-50 text-gray-800",
+        timeColor: "text-indigo-600"
+    },
+    poet: {
+        name: "Penyair",
+        systemMessage: "Anda adalah penyair yang berbakat. Sampaikan jawaban Anda dengan bahasa yang puitis dan penuh makna. Gunakan metafora dan analogi yang indah dalam setiap respons.",
+        avatar: "fas fa-pen-fancy",
+        avatarColor: "bg-teal-100 text-teal-600",
+        messageBg: "bg-teal-50 text-gray-800",
+        timeColor: "text-teal-600"
+    },
+    detective: {
+        name: "Detektif",
+        systemMessage: "Anda adalah detektif yang cerdik dan analitis. Selidiki setiap pertanyaan dengan teliti, ajukan pertanyaan balik untuk klarifikasi, dan berikan kesimpulan yang logis berdasarkan bukti.",
+        avatar: "fas fa-search",
+        avatarColor: "bg-gray-100 text-gray-600",
+        messageBg: "bg-gray-200 text-gray-800",
+        timeColor: "text-gray-600"
+    },
+    chef: {
+        name: "Koki",
+        systemMessage: "Anda adalah koki profesional. Saat menjawab pertanyaan, sertakan analogi dari dunia kuliner dan masakan. Berikan tips praktis dan resep sederhana jika relevan.",
+        avatar: "fas fa-utensils",
+        avatarColor: "bg-orange-100 text-orange-600",
+        messageBg: "bg-orange-50 text-gray-800",
+        timeColor: "text-orange-600"
+    },
+    historian: {
+        name: "Sejarawan",
+        systemMessage: "Anda adalah sejarawan yang berpengetahuan luas. Berikan konteks historis untuk setiap pertanyaan, sertakan fakta-fakta sejarah yang relevan, dan bandingkan dengan peristiwa masa kini.",
+        avatar: "fas fa-landmark",
+        avatarColor: "bg-amber-100 text-amber-600",
+        messageBg: "bg-amber-50 text-gray-800",
+        timeColor: "text-amber-600"
+    },
+    doctor: {
+        name: "Dokter",
+        systemMessage: "Anda adalah dokter yang profesional. Berikan saran kesehatan yang akurat, tekankan pentingnya pencegahan, dan selalu ingatkan untuk berkonsultasi dengan profesional medis untuk masalah serius.",
+        avatar: "fas fa-user-md",
+        avatarColor: "bg-red-100 text-red-600",
+        messageBg: "bg-red-50 text-gray-800",
+        timeColor: "text-red-600"
+    },
+    entrepreneur: {
+        name: "Pengusaha",
+        systemMessage: "Anda adalah pengusaha sukses. Berikan jawaban dengan mindset bisnis, sertakan tips strategi, manajemen, dan inovasi. Fokus pada solusi praktis dan nilai tambah.",
+        avatar: "fas fa-briefcase",
+        avatarColor: "bg-blue-100 text-blue-600",
+        messageBg: "bg-blue-50 text-gray-800",
+        timeColor: "text-blue-600"
+    }
+};
+            
+
+            // Set current date
+            const currentDate = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.querySelector('#chat-area p.text-xs').textContent = `Hari ini, ${currentDate.toLocaleDateString('id-ID', options)}`;
+
+            // Initialize conversation history with system message
+            resetConversationHistory();
+
+            // Toggle theme
+            toggleTheme.addEventListener('click', function() {
+                isDarkMode = !isDarkMode;
+                document.body.classList.toggle('bg-gray-900', isDarkMode);
+                document.body.classList.toggle('bg-gray-100', !isDarkMode);
+                document.querySelector('.chat-container')?.classList.toggle('bg-gray-800', isDarkMode);
+                document.querySelectorAll('.bg-white').forEach(el => {
+                    el.classList.toggle('bg-gray-800', isDarkMode);
+                    el.classList.toggle('text-white', isDarkMode);
+                });
+                document.querySelectorAll('.bg-gray-100').forEach(el => {
+                    el.classList.toggle('bg-gray-700', isDarkMode);
+                    el.classList.toggle('text-white', isDarkMode);
+                });
+                document.querySelectorAll('.text-gray-800').forEach(el => {
+                    el.classList.toggle('text-white', isDarkMode);
+                });
+                document.querySelectorAll('.border-gray-200').forEach(el => {
+                    el.classList.toggle('border-gray-600', isDarkMode);
+                });
+                document.querySelectorAll('.border-gray-300').forEach(el => {
+                    el.classList.toggle('border-gray-600', isDarkMode);
+                });
+                toggleTheme.innerHTML = isDarkMode ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            });
+
+            // Persona modal handling
+            changePersonaBtn.addEventListener('click', function() {
+                personaModal.classList.remove('invisible', 'opacity-0');
+                personaModal.classList.add('visible', 'opacity-100');
+            });
+
+            closeModalBtn.addEventListener('click', function() {
+                closePersonaModal();
+            });
+
+            personaModal.addEventListener('click', function(e) {
+                if (e.target === personaModal) {
+                    closePersonaModal();
+                }
+            });
+
+            // Persona selection
+            personaSelectors.forEach(selector => {
+                selector.addEventListener('click', function() {
+                    personaSelectors.forEach(s => s.classList.remove('ring-2', 'ring-blue-500'));
+                    this.classList.add('ring-2', 'ring-blue-500');
+                    selectedPersona = this.dataset.persona;
+                    selectedPersonaName = personas[selectedPersona].name;
+                });
+            });
+
+            confirmPersonaBtn.addEventListener('click', function() {
+                resetConversationHistory();
+                addMessage(`Sekarang saya berperan sebagai ${selectedPersonaName}. Bagaimana saya bisa membantu Anda?`);
+                closePersonaModal();
+            });
+
+            function closePersonaModal() {
+                personaModal.classList.remove('visible', 'opacity-100');
+                personaModal.classList.add('invisible', 'opacity-0');
+            }
+
+            function resetConversationHistory() {
+                conversationHistory = [
+                    {
+                        role: "system",
+                        content: personas[selectedPersona].systemMessage
+                    }
+                ];
+            }
+
+            // Clear input
+            clearInput.addEventListener('click', function() {
+                userInput.value = '';
+                userInput.focus();
+            });
+
+            // Add message to chat
+            // Update fungsi addMessage untuk menangani newline
+            function addMessage(message, isUser = false) {
+    const messageDiv = document.createElement('div');
+    messageDiv.classList.add('message-enter', 'flex', 'justify-' + (isUser ? 'end' : 'start'));
+    
+    const avatarClass = isUser ? 'bg-indigo-100 text-indigo-600' : personas[selectedPersona].avatarColor;
+    const messageBg = isUser ? 'bg-indigo-500 text-white rounded-tr-none' : 'bg-gray-100 text-gray-800 rounded-tl-none';
+    const avatarIcon = isUser ? 'fas fa-user' : personas[selectedPersona].avatar;
+    const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Format teks: Markdown -> HTML
+    const formattedMessage = formatText(message);
+
+    messageDiv.innerHTML = `
+        <div class="flex items-start space-x-2 max-w-xs md:max-w-md lg:max-w-lg xl:max-w-xl">
+            ${!isUser ? `
+                <div class="w-8 h-8 ${avatarClass} rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="${avatarIcon}"></i>
+                </div>
+            ` : ''}
+            <div class="${messageBg} p-3 rounded-lg ${isUser ? 'rounded-tr-none' : 'rounded-tl-none'}">
+                <div class="message-content" style="white-space: pre-line">${formattedMessage}</div>
+                <p class="text-xs ${isUser ? 'text-indigo-100' : 'text-gray-500'} mt-1">${timeNow}</p>
+            </div>
+            ${isUser ? `
+                <div class="w-8 h-8 ${avatarClass} rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="${avatarIcon}"></i>
+                </div>
+            ` : ''}
+        </div>
+    `;
+    
+    chatArea.appendChild(messageDiv);
+    messageDiv.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Fungsi untuk mengubah Markdown sederhana ke HTML
+function formatText(text) {
+    // Format bold (**text**)
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    // Format italic (*text*), hati-hati agar tidak mengganggu list
+    text = text.replace(/\*(?!\s)(.*?)\*/g, '<em>$1</em>');
+
+    // Format list items
+    text = text.replace(/^-\s+(.*)/gm, '<li>$1</li>');
+    text = text.replace(/^\d+\.\s+(.*)/gm, '<li>$1</li>');
+
+    // Group list items satu per satu ul
+    text = text.replace(/(<li>[\s\S]*?<\/li>)/gm, '<ul class="list-disc pl-5">$1</ul>');
+
+    // Baris baru kecuali setelah ul/li
+    text = text.replace(/([^\n])\n(?!<\/?(ul|li)>)/g, '$1<br>');
+
+    return text;
+}
+
+
+
+            // Show typing indicator
+            function showTypingIndicator() {
+    const typingDiv = document.createElement('div');
+    typingDiv.id = 'typing-indicator';
+    typingDiv.className = 'flex justify-start mb-4';
+    typingDiv.innerHTML = `
+        <div class="flex items-start space-x-2">
+            <div class="w-8 h-8 ${personas[selectedPersona].avatarColor} rounded-full flex items-center justify-center">
+                <i class="${personas[selectedPersona].avatar}"></i>
+            </div>
+            <div class="bg-gray-100 p-3 rounded-lg rounded-tl-none">
+                <div class="typing-indicator flex space-x-1">
+                    <span class="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></span>
+                    <span class="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-100"></span>
+                    <span class="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-200"></span>
+                </div>
+            </div>
+        </div>
+    `;
+    chatArea.appendChild(typingDiv);
+    typingDiv.scrollIntoView({ behavior: 'smooth' });
+}
+
+            // Hide typing indicator
+            function hideTypingIndicator() {
+                const typingIndicator = document.getElementById('typing-indicator');
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+            }
+
+            // Get response from DeepSeek API
+            async function getAIResponse(prompt, onChunkReceived) {
+    const apiKey = 'sk-e4e484f4c6fb439b9be8ff9847bdf5c3';
+    const apiUrl = 'https://api.deepseek.com/v1/chat/completions';
+    
+    // Add user message to conversation history
+    conversationHistory.push({
+        role: "user",
+        content: prompt
+    });
+    
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'deepseek-chat',
+                messages: conversationHistory,
+                temperature: 0.7,
+                max_tokens: 1000,
+                stream: true  // Enable streaming
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullResponse = '';
+        
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n').filter(line => line.trim() !== '');
+            
+            for (const line of lines) {
+                if (line.startsWith('data:') && !line.includes('[DONE]')) {
+                    const data = JSON.parse(line.substring(5));
+                    if (data.choices && data.choices[0].delta && data.choices[0].delta.content) {
+                        const content = data.choices[0].delta.content;
+                        fullResponse += content;
+                        onChunkReceived(content);
+                    }
+                }
+            }
+        }
+        
+        // Add full response to conversation history
+        conversationHistory.push({
+            role: "assistant",
+            content: fullResponse
+        });
+        
+        return fullResponse;
+    } catch (error) {
+        console.error('Error fetching AI response:', error);
+        return 'Maaf, terjadi kesalahan saat memproses permintaan Anda. Silakan coba lagi nanti.';
+    }
+}
+
+            // Handle form submission
+            chatForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const message = userInput.value.trim();
+    if (!message || isWaitingForResponse) return;
+
+    addMessage(message, true);
+    userInput.value = '';
+
+    isWaitingForResponse = true;
+    sendButton.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+    sendButton.disabled = true;
+
+    const messageDiv = document.createElement('div');
+    messageDiv.classList.add('message-enter', 'flex', 'justify-start');
+    messageDiv.innerHTML = `
+        <div class="flex items-start space-x-2 max-w-xs md:max-w-md lg:max-w-lg xl:max-w-xl">
+            <div class="w-8 h-8 ${personas[selectedPersona].avatarColor} rounded-full flex items-center justify-center flex-shrink-0">
+                <i class="${personas[selectedPersona].avatar}"></i>
+            </div>
+            <div class="${personas[selectedPersona].messageBg} p-3 rounded-lg rounded-tl-none">
+                <div class="message-content"></div>
+                <p class="text-xs ${personas[selectedPersona].timeColor} mt-1">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+            </div>
+        </div>
+    `;
+    chatArea.appendChild(messageDiv);
+    messageDiv.scrollIntoView({ behavior: 'smooth' });
+
+    const messageContent = messageDiv.querySelector('.message-content');
+    let fullText = '';
+
+    try {
+        await getAIResponse(message, (chunk) => {
+            fullText += chunk;
+            messageContent.innerHTML = formatText(fullText);
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        });
+    } catch (error) {
+        messageContent.innerHTML = '<em>Maaf, terjadi kesalahan saat memproses permintaan Anda.</em>';
+    }
+
+    isWaitingForResponse = false;
+    sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
+    sendButton.disabled = false;
+    userInput.focus();
+});
+
+            // Enable/disable send button based on input
+            userInput.addEventListener('input', function() {
+                sendButton.disabled = !userInput.value.trim() || isWaitingForResponse;
+            });
+
+            // Initial focus on input
+            userInput.focus();
+        });
+    </script>
+</body>
+</html>
